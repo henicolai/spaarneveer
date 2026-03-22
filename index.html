@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spaarneveer — Vaarrooster 2026</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f4f0; color: #1a1a18; min-height: 100vh; }
+  .app { max-width: 960px; margin: 0 auto; padding: 2rem 1rem; }
+  .header { margin-bottom: 1.5rem; }
+  .header h1 { font-size: 24px; font-weight: 600; }
+  .header p { font-size: 14px; color: #666; margin-top: 4px; }
+  .upload-zone { border: 2px dashed #c0bfb8; border-radius: 12px; padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.15s; background: white; }
+  .upload-zone:hover, .upload-zone.dragover { border-color: #185FA5; background: #e6f1fb; }
+  .upload-zone input { display: none; }
+  .upload-zone p { font-size: 14px; color: #666; margin-top: 6px; }
+  .upload-zone .icon { font-size: 28px; }
+  .upload-zone .btn-upload { display: inline-block; margin-top: 10px; font-family: inherit; font-size: 13px; padding: 7px 16px; background: #185FA5; color: white; border: none; border-radius: 8px; cursor: pointer; }
+  .upload-status { margin-top: 0.75rem; font-size: 13px; padding: 8px 12px; border-radius: 8px; }
+  .upload-status.laden { background: #e6f1fb; color: #0C447C; }
+  .upload-status.klaar { background: #eaf3de; color: #27500A; }
+  .upload-status.fout { background: #fcebeb; color: #A32D2D; }
+  .nav-knoppen { display: flex; gap: 6px; margin-bottom: 1.5rem; }
+  .nav-btn { font-family: inherit; font-size: 14px; padding: 8px 20px; border-radius: 8px; cursor: pointer; border: 1px solid #ccc; background: white; color: #444; transition: all 0.15s; }
+  .nav-btn:hover { background: #f0efeb; }
+  .nav-btn.actief { background: #185FA5; color: white; border-color: #185FA5; }
+  .step { background: white; border: 1px solid #e0dfd8; border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+  .step-label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.6rem; }
+  .step h3 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
+  select, textarea { width: 100%; font-family: inherit; font-size: 14px; color: #1a1a18; background: #f5f4f0; border: 1px solid #ccc; border-radius: 8px; padding: 9px 11px; outline: none; transition: border-color 0.15s; }
+  select:focus, textarea:focus { border-color: #185FA5; }
+  textarea { resize: vertical; min-height: 80px; }
+  .dienst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .dienst-card { border: 1px solid #e0dfd8; border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: all 0.15s; background: white; position: relative; }
+  .dienst-card:hover { border-color: #aaa; background: #f5f4f0; }
+  .dienst-card.selected { border: 2px solid #185FA5; background: #e6f1fb; }
+  .dienst-card .datum { font-size: 13px; font-weight: 600; }
+  .dienst-card .details { font-size: 11px; color: #888; margin-top: 2px; }
+  .dienst-card.selected .datum { color: #0C447C; }
+  .dienst-card.selected .details { color: #185FA5; }
+  .dienst-card .check { display: none; position: absolute; top: 6px; right: 8px; font-size: 13px; color: #185FA5; font-weight: 700; }
+  .dienst-card.selected .check { display: block; }
+  .selectie-info { font-size: 13px; color: #185FA5; margin-top: 10px; font-weight: 500; }
+  .hidden { display: none !important; }
+  .klembord-blok { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.25rem; }
+  .klembord-rij { display: flex; align-items: stretch; border: 1px solid #e0dfd8; border-radius: 8px; overflow: hidden; }
+  .veld-naam { font-size: 12px; color: #888; padding: 10px 12px; background: #f5f4f0; display: flex; align-items: center; min-width: 95px; border-right: 1px solid #e0dfd8; flex-shrink: 0; }
+  .veld-inhoud { font-size: 13px; color: #1a1a18; padding: 10px 12px; flex: 1; background: white; white-space: pre-wrap; line-height: 1.5; word-break: break-all; min-width: 0; }
+  .kopieer-btn { font-family: inherit; font-size: 13px; padding: 0 14px; background: transparent; border: none; border-left: 1px solid #e0dfd8; color: #185FA5; cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+  .kopieer-btn:hover { background: #e6f1fb; }
+  .kopieer-btn.gedaan { color: #27500A; background: #eaf3de; }
+  .mail-knoppen { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .mail-btn { font-family: inherit; font-size: 13px; font-weight: 600; padding: 10px 8px; border-radius: 8px; cursor: pointer; border: 1px solid #ccc; background: white; color: #1a1a18; transition: all 0.15s; text-align: center; text-decoration: none; display: block; }
+  .mail-btn:hover { background: #f5f4f0; }
+  .mail-btn.primair { background: #185FA5; color: white; border-color: #185FA5; }
+  .mail-btn.primair:hover { background: #0C447C; }
+  .mail-btn.groen { background: #3B6D11; color: #eaf3de; border-color: #3B6D11; }
+  .mail-btn.groen:hover { background: #27500A; }
+  .mail-label { font-size: 11px; color: #888; margin-top: 4px; text-align: center; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 1px solid #e0dfd8; flex-wrap: wrap; }
+  .tab { font-family: inherit; font-size: 14px; padding: 8px 18px; border: none; background: transparent; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; }
+  .tab:hover { color: #1a1a18; }
+  .tab.actief { color: #185FA5; border-bottom-color: #185FA5; font-weight: 600; }
+  .tab-inhoud { display: none; }
+  .tab-inhoud.actief { display: block; }
+  .rooster-wrap { overflow-x: auto; background: white; border: 1px solid #e0dfd8; border-radius: 12px; padding: 1rem; }
+  table { border-collapse: collapse; font-size: 11px; width: 100%; }
+  th { background: #f5f4f0; color: #666; font-weight: 600; padding: 5px 6px; border: 1px solid #e0dfd8; text-align: center; white-space: nowrap; }
+  th.dag-weekend { background: #e6f1fb; color: #0C447C; }
+  td { padding: 4px 6px; border: 1px solid #e0dfd8; text-align: center; white-space: nowrap; color: #1a1a18; }
+  td.rij-label { font-weight: 600; color: #666; background: #f5f4f0; text-align: left; padding-left: 10px; }
+  td.gewijzigd { background: #eaf3de; color: #27500A; font-weight: 600; }
+  td.weekend-cel { background: #fafaf7; }
+  .legenda { margin-top: 0.75rem; font-size: 12px; color: #888; display: flex; align-items: center; gap: 6px; }
+  .legenda-kleur { width: 14px; height: 14px; background: #eaf3de; border: 1px solid #639922; border-radius: 3px; flex-shrink: 0; }
+  .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .overlay-box { background: white; border-radius: 16px; padding: 2rem; max-width: 420px; width: 90%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+  .overlay-box h2 { font-size: 20px; font-weight: 600; margin-bottom: 0.5rem; }
+  .overlay-box p { font-size: 14px; color: #666; margin-bottom: 1rem; line-height: 1.6; }
+  .overlay-btn-rij { display: flex; gap: 8px; margin-top: 1rem; }
+  .overlay-btn { flex: 1; font-family: inherit; font-size: 14px; padding: 10px; border-radius: 8px; cursor: pointer; transition: all 0.15s; }
+  .overlay-btn.primair { background: #185FA5; color: white; border: none; }
+  .overlay-btn.primair:hover { background: #0C447C; }
+  .overlay-btn.secundair { background: white; color: #444; border: 1px solid #ccc; }
+  .overlay-btn.secundair:hover { background: #f5f4f0; }
+  @media (max-width: 500px) {
+    .mail-knoppen { grid-template-columns: 1fr; }
+    .nav-knoppen { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>⚓ Spaarneveer — Vaarrooster 2026</h1>
+    <p>Dienst overdragen en rooster bekijken</p>
+  </div>
+
+  <div class="step" id="upload-stap">
+    <div class="step-label">Rooster bijwerken</div>
+    <h3>Nieuw rooster laden</h3>
+    <div class="upload-zone" id="upload-zone"
+         onclick="document.getElementById('pdf-input').click()"
+         ondragover="event.preventDefault();this.classList.add('dragover')"
+         ondragleave="this.classList.remove('dragover')"
+         ondrop="handleDrop(event)">
+      <div class="icon">📄</div>
+      <p>Sleep een nieuw PDF-rooster hierheen of klik om te uploaden</p>
+      <button class="btn-upload" onclick="event.stopPropagation();document.getElementById('pdf-input').click()">PDF kiezen</button>
+      <input type="file" id="pdf-input" accept=".pdf" onchange="verwerkPDF(this.files[0])">
+    </div>
+    <div id="upload-status" class="hidden"></div>
+    <p style="font-size:12px;color:#aaa;margin-top:8px;">Het ingebouwde rooster (feb–apr 2026) wordt gebruikt totdat je een nieuwe PDF uploadt.</p>
+  </div>
+
+  <div class="nav-knoppen">
+    <button class="nav-btn actief" onclick="toonScherm('ruilen', this)">Dienst overdragen</button>
+    <button class="nav-btn" onclick="toonScherm('rooster', this)">Rooster bekijken</button>
+  </div>
+
+  <div id="scherm-ruilen">
+    <div class="step" id="stap1">
+      <div class="step-label">Stap 1</div>
+      <h3>Wie ben jij?</h3>
+      <select id="schipper-select" onchange="laadDiensten()"><option value="">— Kies je naam —</option></select>
+    </div>
+    <div class="step hidden" id="stap2">
+      <div class="step-label">Stap 2</div>
+      <h3>Welke diensten wil je overdragen? <span style="font-weight:400;color:#999;font-size:14px;">Selecteer één of meer</span></h3>
+      <div class="dienst-grid" id="diensten-grid"></div>
+      <div id="selectie-info" class="selectie-info hidden"></div>
+    </div>
+    <div class="step hidden" id="stap3">
+      <div class="step-label">Stap 3</div>
+      <h3>Persoonlijk bericht <span style="font-weight:400;color:#999;font-size:14px;">(optioneel)</span></h3>
+      <textarea id="persoonlijk-bericht" placeholder="Bijv: ik ga op vakantie, kan iemand mijn diensten overnemen? Alvast bedankt!"></textarea>
+    </div>
+    <div class="step hidden" id="stap4">
+      <div class="step-label">Stap 4 — Versturen</div>
+      <h3>Kopieer en open je mailprogramma</h3>
+      <div class="klembord-blok">
+        <div class="klembord-rij">
+          <div class="veld-naam">Aan</div>
+          <div class="veld-inhoud" id="veld-aan" style="font-size:11px;"></div>
+          <button class="kopieer-btn" onclick="kopieer('aan',this)">Kopieer</button>
+        </div>
+        <div class="klembord-rij">
+          <div class="veld-naam">Onderwerp</div>
+          <div class="veld-inhoud" id="veld-onderwerp"></div>
+          <button class="kopieer-btn" onclick="kopieer('onderwerp',this)">Kopieer</button>
+        </div>
+        <div class="klembord-rij">
+          <div class="veld-naam">Bericht</div>
+          <div class="veld-inhoud" id="veld-tekst"></div>
+          <button class="kopieer-btn" onclick="kopieer('tekst',this)">Kopieer</button>
+        </div>
+      </div>
+      <div class="mail-knoppen">
+        <div>
+          <a class="mail-btn primair" href="https://mail.google.com/mail/#compose" target="_blank">Gmail ↗</a>
+          <div class="mail-label">Open Gmail</div>
+        </div>
+        <div>
+          <a class="mail-btn" href="https://outlook.live.com/mail/0/deeplink/compose" target="_blank">Outlook ↗</a>
+          <div class="mail-label">Open Outlook</div>
+        </div>
+        <div>
+          <button class="mail-btn groen" onclick="kopieerAlles(this)">Kopieer alles</button>
+          <div class="mail-label">Ander programma</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="scherm-rooster" class="hidden">
+    <div id="rooster-tabs-container"></div>
+  </div>
+</div>
+
+<script>
+const SCHIPPERS_VAST = {
+  "Henk S":"houtvaart@gmail.com","Gerard":"gerard.c.vanleeuwen@gmail.com","Jan R":"jjroben@gmail.com",
+  "Popko":"p.h.nijenhuis@gmail.com","Elja":"eljavanderhave@gmail.com","Durk-J":"info@e-diensten.nl",
+  "Paul2":"paulsamson8@live.com","Pim":"p.breeuwer@activital.nl","Jan O":"jan.oostenbrink@gmail.com",
+  "Bram":"brammetje43@gmail.com","Yvonne":"tavirka@hotmail.com","Dick":"d.ippel@hccnet.nl",
+  "René":"cptvanlieshout@gmail.com","Frank":"sandenaf@hotmail.com","Paul":"paulstroosnijder@hotmail.com",
+  "Wim":"wmadejong@gmail.com","Henk N":"hnicolai@gmail.com","Leon":"leosspur76@gmail.com",
+  "Arnout":"arnout.esser@gmail.com","Sander":"sanderzonneveld@xs4all.nl","JeroenB":"jeroen.vanbakkum@ziggo.nl",
+  "Ton":"t.tenvelde@planet.nl","JeroenM":"jeroenmeijer001@gmail.com","Han":"vangilshan@gmail.com",
+  "Hendrik":"hendrikgeerling@gmail.com","Doris":"dorisbode@hotmail.nl","Josh":"Josh.Kruizinga@gmail.com",
+  "Irma":"irma6@xs4all.nl","Tineke":"10vbeers@kpnmail.nl","Arjen":"detopzter@tuta.io","Rob":"robvanheerden@gmail.com"
+};
+const ROOSTER_ORIG = {
+  feb:{dagen:["zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do","vr","za"],
+    "1a":["Henk S","Gerard","Jan R","Popko","Elja","Durk-J","Paul2","Henk S","Pim","Jan O","Popko","Elja","Durk-J","Paul2","Henk S","Gerard","Jan R","Popko","Elja","JeroenM","Paul2","Henk S","Gerard","Jan R","Popko","Elja","Durk-J","Paul2"],
+    "1b":["Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René","JeroenM","Yvonne"],
+    "2a":["Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander"],
+    "2b":["JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout"],
+    "3a":["Pim","Han","Popko","Josh","Josh","Hendrik","Doris","Pim","Han","René","Josh","Josh","Hendrik","Doris","Pim","Josh","Popko","Josh","Josh","Hendrik","Doris","Elja","Josh","René","Josh","Josh","Hendrik","Doris"],
+    "3b":["Tineke","Henk S","Irma","Bram","Han","Gerard","Hendrik","Tineke","Henk S","Arjen","Bram","Pim","Gerard","Hendrik","Tineke","Henk S","Irma","Bram","Pim","Gerard","Hendrik","Tineke","Henk S","Arjen","Bram","Tineke","Gerard","Hendrik"]},
+  mrt:{dagen:["zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do","vr","za","zo","ma","di"],
+    "1a":["Henk S","Gerard","Tineke","Popko","Elja","Durk-J","Paul2","Henk S","Pim","Jan O","Popko","Elja","Durk-J","Paul2","Henk S","Gerard","Jan O","Popko","Elja","Durk-J","Pim","Henk S","Pim","Han","Popko","Elja","Durk-J","Paul2","Henk S","Gerard","Han"],
+    "1b":["Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne"],
+    "2a":["Paul","Pim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Jan R","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N"],
+    "2b":["JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick"],
+    "3a":["Pim","Josh","Popko","Josh","Josh","Hendrik","Doris","Pim","Josh","René","Josh","Josh","Hendrik","Doris","Pim","Josh","Popko","Josh","Josh","Hendrik","Doris","Pim","Han","René","Josh","Josh","Hendrik","Doris","Pim","Han","Popko"],
+    "3b":["Tineke","Henk S","Irma","Bram","Pim","Gerard","Hendrik","Tineke","Henk S","Arjen","Bram","Pim","Gerard","Hendrik","Tineke","Henk S","Irma","Bram","Han","Gerard","Hendrik","Tineke","Henk S","Arjen","Bram","Han","Gerard","Hendrik","Tineke","Henk S","Irma"]},
+  apr:{dagen:["wo","do","vr","za","zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do","vr","za","zo","ma","di","wo","do"],
+    "1a":["Popko","Elja","Durk-J","Paul2","Henk S","Pim","Rob","Popko","Elja","Durk-J","Paul2","Henk S","Gerard","Rob","Popko","Elja","Durk-J","Paul2","Henk S","Pim","Rob","Popko","Elja","Durk-J","Paul2","Henk S","Gerard","Rob","Popko","Elja"],
+    "1b":["Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René","Frank","Yvonne","Bram","Paul2","Yvonne","Dick","René"],
+    "2a":["Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout","Jan O","Sander","Paul","Wim","Henk N","Leon","Arnout"],
+    "2b":["Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O","Leon","Arnout","JeroenB","Ton","Dick","Elja","Jan O"],
+    "3a":["Josh","Josh","Hendrik","Doris","Pim","Han","René","Josh","Josh","Hendrik","Doris","Pim","Han","Popko","Josh","Josh","Hendrik","Doris","Pim","Han","René","Josh","Josh","Hendrik","Doris","Pim","Han","Popko","Josh","Josh"],
+    "3b":["Bram","Han","Gerard","Hendrik","Tineke","Henk S","Arjen","Bram","Han","Gerard","Hendrik","Tineke","Henk S","Irma","Bram","Han","Gerard","Hendrik","Tineke","Henk S","Arjen","Bram","Han","Gerard","Hendrik","Tineke","Henk S","Irma","Bram","Han"]}
+};
+const DIENSTEN = ["1a","1b","2a","2b","3a","3b"];
+const TIJDEN = {
+  wdag:  {"1a":"07:30–11:00","1b":"07:30–11:00","2a":"11:00–14:30","2b":"11:00–14:30","3a":"14:30–18:00","3b":"14:30–18:00"},
+  weekend:{"1a":"09:00–12:00","1b":"09:00–12:00","2a":"12:00–15:00","2b":"12:00–15:00","3a":"15:00–18:00","3b":"15:00–18:00"}
+};
+
+let rooster = JSON.parse(JSON.stringify(ROOSTER_ORIG));
+let maandNamen = {feb:"Februari",mrt:"Maart",apr:"April"};
+let wijzigingen = [];
+let schippers = Object.assign({}, SCHIPPERS_VAST);
+let schipper = null;
+let geselecteerdeDiensten = []; // array van {m, d, dag, dn, tijd}
+
+function veiligBtoa(str) { return btoa(unescape(encodeURIComponent(str))); }
+function veiligAtob(str) { return decodeURIComponent(escape(atob(str))); }
+
+function vulSchipperSelect() {
+  const sel = document.getElementById("schipper-select");
+  const huidig = sel.value;
+  sel.innerHTML = '<option value="">— Kies je naam —</option>';
+  Object.keys(schippers).sort().forEach(n => {
+    const o = document.createElement("option"); o.value=n; o.textContent=n;
+    if (n===huidig) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+vulSchipperSelect();
+
+// URL params
+const params = new URLSearchParams(window.location.search);
+if (params.get("overnemen")) {
+  try {
+    const info = JSON.parse(veiligAtob(decodeURIComponent(params.get("overnemen"))));
+    sessionStorage.setItem("overnemen", JSON.stringify(info));
+    window.history.replaceState({}, "", window.location.pathname);
+  } catch(e) {}
+}
+window.addEventListener("load", () => {
+  const op = sessionStorage.getItem("overnemen");
+  if (op) toonOvernemenDialog(JSON.parse(op));
+  bouwRoosters();
+});
+
+// PDF upload
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById("upload-zone").classList.remove("dragover");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type === "application/pdf") verwerkPDF(file);
+}
+async function verwerkPDF(file) {
+  if (!file) return;
+  const status = document.getElementById("upload-status");
+  status.className = "upload-status laden";
+  status.textContent = "⏳ PDF wordt ingelezen... even geduld (kan 10–20 sec duren)";
+  status.classList.remove("hidden");
+  try {
+    const base64 = await leesAlsBase64(file);
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 4000,
+        messages: [{ role: "user", content: [
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+          { type: "text", text: `Lees dit vaarrooster en geef het terug als JSON in dit exacte formaat:
+{"maanden":{"MAANDCODE":{"naam":"Volledige maandnaam jaar","dagen":["zo","ma",...],"1a":[...],"1b":[...],"2a":[...],"2b":[...],"3a":[...],"3b":[...]}}}
+MAANDCODE = lowercase bijv "feb","mrt","apr". Dagen = 2-3 letter lowercase. Namen exact zoals in rooster. Elke dienstrij heeft exact evenveel namen als dagen. Geef ALLEEN JSON terug, geen uitleg.` }
+        ]}]
+      })
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    const tekst = data.content.map(i=>i.text||"").join("");
+    const parsed = JSON.parse(tekst.replace(/```json|```/g,"").trim());
+    rooster = {}; maandNamen = {}; wijzigingen = [];
+    Object.entries(parsed.maanden).forEach(([code, md]) => {
+      rooster[code] = md;
+      maandNamen[code] = md.naam || code;
+    });
+    Object.values(rooster).forEach(m => {
+      DIENSTEN.forEach(d => { if (m[d]) m[d].forEach(naam => { if (naam && !schippers[naam]) schippers[naam] = ""; }); });
+    });
+    vulSchipperSelect();
+    bouwRoosters();
+    status.className = "upload-status klaar";
+    status.textContent = `✓ Rooster ingeladen: ${Object.values(maandNamen).join(", ")}`;
+    ["stap2","stap3","stap4"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+    schipper = null; geselecteerdeDiensten = [];
+  } catch(e) {
+    status.className = "upload-status fout";
+    status.textContent = `✗ Fout bij inlezen: ${e.message}`;
+  }
+}
+function leesAlsBase64(file) {
+  return new Promise((res,rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(",")[1]);
+    r.onerror = () => rej(new Error("Bestand kon niet worden gelezen"));
+    r.readAsDataURL(file);
+  });
+}
+
+function toonScherm(scherm, btn) {
+  document.getElementById("scherm-ruilen").classList.toggle("hidden", scherm!=="ruilen");
+  document.getElementById("scherm-rooster").classList.toggle("hidden", scherm!=="rooster");
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("actief"));
+  btn.classList.add("actief");
+  if (scherm==="rooster") bouwRoosters();
+}
+
+function bouwRoosters() {
+  const container = document.getElementById("rooster-tabs-container");
+  const codes = Object.keys(rooster);
+  if (!codes.length) { container.innerHTML=`<div style="padding:2rem;text-align:center;color:#888;">Geen rooster geladen.</div>`; return; }
+  let html = `<div class="tabs">`;
+  codes.forEach((m,i) => { html+=`<button class="tab ${i===0?"actief":""}" onclick="toonMaand('${m}',this)">${maandNamen[m]||m}</button>`; });
+  html += `</div>`;
+  codes.forEach((m,i) => {
+    const dagen = rooster[m].dagen||[];
+    let t = `<table><thead><tr><th>Dienst</th>`;
+    dagen.forEach((d,idx) => { const we=d==="zo"||d==="za"; t+=`<th class="${we?"dag-weekend":""}">${d}<br>${idx+1}</th>`; });
+    t += `</tr></thead><tbody>`;
+    DIENSTEN.forEach(ds => {
+      t += `<tr><td class="rij-label">${ds}</td>`;
+      (rooster[m][ds]||[]).forEach((naam,idx) => {
+        const d=dagen[idx]||""; const we=d==="zo"||d==="za";
+        const gew=wijzigingen.some(w=>w.maand===m&&w.dienst===ds&&w.dag===idx);
+        t+=`<td class="${gew?"gewijzigd":we?"weekend-cel":""}">${naam||""}</td>`;
+      });
+      t+=`</tr>`;
+    });
+    t+=`</tbody></table>`;
+    html+=`<div id="tab-${m}" class="tab-inhoud ${i===0?"actief":""}"><div class="rooster-wrap">${t}</div></div>`;
+  });
+  html+=`<div class="legenda"><div class="legenda-kleur"></div> Gewijzigde dienst</div>`;
+  container.innerHTML = html;
+}
+
+function toonMaand(m, btn) {
+  document.querySelectorAll(".tab-inhoud").forEach(el=>el.classList.remove("actief"));
+  document.querySelectorAll(".tab").forEach(el=>el.classList.remove("actief"));
+  const el=document.getElementById("tab-"+m); if(el) el.classList.add("actief");
+  btn.classList.add("actief");
+}
+
+function toonOvernemenDialog(info) {
+  const overlay=document.createElement("div"); overlay.className="overlay";
+  overlay.innerHTML=`<div class="overlay-box">
+    <div style="font-size:28px;margin-bottom:0.75rem;">⚓</div>
+    <h2>Dienst overnemen</h2>
+    <p>Je wilt de dienst van <strong>${info.schipper}</strong> overnemen:<br><strong>${info.label}</strong></p>
+    <p style="font-size:13px;color:#888;margin-bottom:0.5rem;">Wat is jouw naam?</p>
+    <select id="overnemer-select" style="width:100%;margin-bottom:0.5rem;"><option value="">— Kies je naam —</option></select>
+    <div class="overlay-btn-rij">
+      <button class="overlay-btn primair" id="bevestig-btn">Bevestigen</button>
+      <button class="overlay-btn secundair" id="annuleer-btn">Annuleren</button>
+    </div></div>`;
+  document.body.appendChild(overlay);
+  const s=overlay.querySelector("#overnemer-select");
+  Object.keys(schippers).filter(n=>n!==info.schipper).sort().forEach(n=>{const o=document.createElement("option");o.value=n;o.textContent=n;s.appendChild(o);});
+  overlay.querySelector("#bevestig-btn").onclick=()=>{
+    const overnemer=s.value;
+    if(!overnemer){alert("Kies eerst je naam.");return;}
+    const idx=info.dag-1;
+    if(rooster[info.maand]&&rooster[info.maand][info.dienst]){
+      rooster[info.maand][info.dienst][idx]=overnemer;
+      wijzigingen.push({maand:info.maand,dienst:info.dienst,dag:idx});
+    }
+    sessionStorage.removeItem("overnemen"); overlay.remove();
+    bouwRoosters();
+    toonScherm("rooster",document.querySelectorAll(".nav-btn")[1]);
+    alert(`✓ Rooster bijgewerkt!\n\n${info.label}\nstaat nu op naam van ${overnemer}.`);
+  };
+  overlay.querySelector("#annuleer-btn").onclick=()=>{sessionStorage.removeItem("overnemen");overlay.remove();};
+}
+
+function laadDiensten() {
+  schipper=document.getElementById("schipper-select").value;
+  geselecteerdeDiensten=[];
+  ["stap3","stap4"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  document.getElementById("selectie-info").classList.add("hidden");
+  const grid=document.getElementById("diensten-grid"); grid.innerHTML="";
+  if(!schipper){document.getElementById("stap2").classList.add("hidden");return;}
+  let gevonden=[];
+  Object.keys(rooster).forEach(m=>DIENSTEN.forEach(d=>{
+    (rooster[m][d]||[]).forEach((naam,i)=>{if(naam===schipper)gevonden.push({m,d,dag:i+1,dn:(rooster[m].dagen||[])[i]||""});});
+  }));
+  if(!gevonden.length){grid.innerHTML=`<div style="font-size:14px;color:#888;">Geen diensten gevonden.</div>`;}
+  else gevonden.forEach(v=>{
+    const isWe=v.dn==="zo"||v.dn==="za";
+    const tijd=isWe?TIJDEN.weekend[v.d]:TIJDEN.wdag[v.d];
+    const info={...v,tijd};
+    const c=document.createElement("div"); c.className="dienst-card";
+    c.innerHTML=`<div class="check">✓</div><div class="datum">${v.dn} ${v.dag} ${maandNamen[v.m]||v.m}</div><div class="details">Dienst ${v.d} · ${tijd}</div>`;
+    c.onclick=()=>toggleDienst(c,info);
+    grid.appendChild(c);
+  });
+  document.getElementById("stap2").classList.remove("hidden");
+}
+
+function toggleDienst(card, info) {
+  const key = `${info.m}-${info.d}-${info.dag}`;
+  const idx = geselecteerdeDiensten.findIndex(d=>`${d.m}-${d.d}-${d.dag}`===key);
+  if(idx>=0){
+    geselecteerdeDiensten.splice(idx,1);
+    card.classList.remove("selected");
+  } else {
+    geselecteerdeDiensten.push(info);
+    card.classList.add("selected");
+  }
+  const n=geselecteerdeDiensten.length;
+  const infoEl=document.getElementById("selectie-info");
+  if(n>0){
+    infoEl.textContent=`${n} dienst${n>1?"en":""} geselecteerd`;
+    infoEl.classList.remove("hidden");
+    document.getElementById("stap3").classList.remove("hidden");
+    document.getElementById("stap4").classList.remove("hidden");
+    updateVelden();
+    document.getElementById("persoonlijk-bericht").oninput=updateVelden;
+  } else {
+    infoEl.classList.add("hidden");
+    document.getElementById("stap3").classList.add("hidden");
+    document.getElementById("stap4").classList.add("hidden");
+  }
+}
+
+function getLabels() {
+  return geselecteerdeDiensten.map(d=>`${d.dn} ${d.dag} ${(maandNamen[d.m]||d.m).toLowerCase()} — dienst ${d.d} (${d.tijd})`);
+}
+function getLinks() {
+  return geselecteerdeDiensten.map(d=>{
+    const base=window.location.href.split("?")[0];
+    const label=`${d.dn} ${d.dag} ${(maandNamen[d.m]||d.m).toLowerCase()} — dienst ${d.d} (${d.tijd})`;
+    const data=veiligBtoa(JSON.stringify({schipper,maand:d.m,dienst:d.d,dag:d.dag,label}));
+    return {label, url:`${base}?overnemen=${encodeURIComponent(data)}`};
+  });
+}
+function getOnderwerp() {
+  const n=geselecteerdeDiensten.length;
+  if(n===1) return `Dienst ruilen — ${getLabels()[0]}`;
+  return `Dienst ruilen — ${n} diensten`;
+}
+function getAan() {
+  return Object.entries(schippers).filter(([n,e])=>n!==schipper&&e).map(([,e])=>e).join("; ");
+}
+function getTekst() {
+  const b = document.getElementById("persoonlijk-bericht").value.trim();
+  const n = geselecteerdeDiensten.length;
+  const links = getLinks();
+  let dienstenTekst;
+  if (n === 1) {
+    dienstenTekst = `Kan iemand mijn dienst op ${links[0].label} overnemen?\n\nKlik op onderstaande link om de dienst over te nemen:\n${links[0].url}`;
+  } else {
+    dienstenTekst = `Kan iemand één of meer van mijn onderstaande diensten overnemen?\n\n` +
+      links.map((l, i) => `${i+1}. ${l.label}\n   → ${l.url}`).join("\n\n");
+  }
+  return `Beste collega's,${b ? "\n\n" + b : ""}\n\n${dienstenTekst}\n\nMet vriendelijke groet,\n${schipper}`;
+}
+function updateVelden(){
+  if(!schipper) return;
+  document.getElementById("veld-aan").textContent = getAan();
+  document.getElementById("veld-onderwerp").textContent = getOnderwerp();
+  document.getElementById("veld-tekst").textContent = getTekst();
+}
+function kopieer(wat,btn){
+  const t=wat==="aan"?getAan():wat==="onderwerp"?getOnderwerp():getTekst();
+  navigator.clipboard.writeText(t).then(()=>{
+    const orig=btn.textContent; btn.textContent="✓ Klaar"; btn.classList.add("gedaan");
+    setTimeout(()=>{btn.textContent=orig;btn.classList.remove("gedaan");},2500);
+  });
+}
+function kopieerAlles(btn){
+  const t=`Aan: ${getAan()}\n\nOnderwerp: ${getOnderwerp()}\n\n${getTekst()}`;
+  navigator.clipboard.writeText(t).then(()=>{
+    const orig=btn.textContent; btn.textContent="✓ Gekopieerd!";
+    setTimeout(()=>{btn.textContent=orig;},2500);
+  });
+}
+</script>
+</body>
+</html>
