@@ -227,8 +227,8 @@ let schippers = Object.assign({}, SCHIPPERS_VAST);
 let schipper = null;
 let geselecteerdeDiensten = []; // array van {m, d, dag, dn, tijd}
 
-function veiligBtoa(str) { return btoa(unescape(encodeURIComponent(str))); }
-function veiligAtob(str) { return decodeURIComponent(escape(atob(str))); }
+function veiligEncode(str) { return encodeURIComponent(str); }
+function veiligDecode(str) { return decodeURIComponent(str); }
 
 function vulSchipperSelect() {
   const sel = document.getElementById("schipper-select");
@@ -246,10 +246,10 @@ vulSchipperSelect();
 const params = new URLSearchParams(window.location.search);
 if (params.get("overnemen")) {
   try {
-    const info = JSON.parse(veiligAtob(decodeURIComponent(params.get("overnemen"))));
+    const info = JSON.parse(veiligDecode(params.get("overnemen")));
     sessionStorage.setItem("overnemen", JSON.stringify(info));
     window.history.replaceState({}, "", window.location.pathname);
-  } catch(e) {}
+  } catch(e) { console.error("overnemen parse fout:", e); }
 }
 window.addEventListener("load", () => {
   const op = sessionStorage.getItem("overnemen");
@@ -447,10 +447,10 @@ function getLabels() {
 }
 function getLinks() {
   return geselecteerdeDiensten.map(d=>{
-    const base=window.location.href.split("?")[0];
-    const label=`${d.dn} ${d.dag} ${(maandNamen[d.m]||d.m).toLowerCase()} — dienst ${d.d} (${d.tijd})`;
-    const data=veiligBtoa(JSON.stringify({schipper,maand:d.m,dienst:d.d,dag:d.dag,label}));
-    return {label, url:`${base}?overnemen=${encodeURIComponent(data)}`};
+    const base = window.location.href.split("?")[0];
+    const label = `${d.dn} ${d.dag} ${(maandNamen[d.m]||d.m).toLowerCase()} - dienst ${d.d} (${d.tijd})`;
+    const data = veiligEncode(JSON.stringify({schipper, maand:d.m, dienst:d.d, dag:d.dag, label}));
+    return {label, url:`${base}?overnemen=${data}`};
   });
 }
 function getOnderwerp() {
@@ -469,8 +469,8 @@ function getTekst() {
   if (n === 1) {
     dienstenTekst = `Kan iemand mijn dienst op ${links[0].label} overnemen?\n\nKlik op onderstaande link om de dienst over te nemen:\n${links[0].url}`;
   } else {
-    dienstenTekst = `Kan iemand één of meer van mijn onderstaande diensten overnemen?\n\n` +
-      links.map((l, i) => `${i+1}. ${l.label}\n   → ${l.url}`).join("\n\n");
+    dienstenTekst = `Kan iemand een of meer van mijn onderstaande diensten overnemen?\n\n` +
+      links.map((l, i) => `${i+1}. ${l.label}\nOvernemen: ${l.url}`).join("\n\n");
   }
   return `Beste collega's,${b ? "\n\n" + b : ""}\n\n${dienstenTekst}\n\nMet vriendelijke groet,\n${schipper}`;
 }
